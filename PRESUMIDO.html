@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cálculo de Impostos - Lucro Presumido</title>
+    <style>
+        /* Estilos como no código anterior */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            background-color: #f4f4f4;
+            color: #333;
+        }
+        h1 {
+            text-align: center;
+            color: #0044cc;
+            margin-top: 20px;
+        }
+        form {
+            max-width: 600px;
+            margin: auto;
+            padding: 20px;
+            border: 1px solid #0044cc;
+            border-radius: 8px;
+            background-color: #fff;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        label {
+            font-weight: bold;
+            margin-top: 10px;
+            display: block;
+            color: #0044cc;
+        }
+        input, select, button {
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #0044cc;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #0033a0;
+        }
+        .hidden {
+            display: none;
+        }
+        /* Estilos do modal como no código anterior */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+        .modal-content {
+            background-color: #fff;
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid #0044cc;
+            width: 80%;
+            max-width: 600px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        .close {
+            color: #0044cc;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+        .close:hover,
+        .close:focus {
+            color: #0033a0;
+            text-decoration: none;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Cálculo de Impostos - Lucro Presumido</h1>
+
+    <form id="taxForm">
+        <label for="tipoCalculo">Selecione o tipo de cálculo:</label>
+        <select id="tipoCalculo" name="tipoCalculo" required>
+            <option value="mensal">Mensal</option>
+            <option value="trimestral">Trimestral</option>
+        </select>
+
+        <label for="atividade">Selecione a atividade da empresa:</label>
+        <select id="atividade" name="atividade" required>
+            <option value="comercio">Comércio</option>
+            <option value="servicos">Serviços</option>
+            <option value="industria">Indústria</option>
+        </select>
+
+        <div id="inputSection">
+            <div id="mensalInputs">
+                <label for="faturamento">Faturamento Mensal (R$):</label>
+                <input type="text" id="faturamento" name="faturamento" required oninput="formatCurrency(this)" placeholder="R$ 0,00">
+            </div>
+
+            <div id="trimestralInputs" class="hidden">
+                <label for="faturamentoTrimestral">Faturamento Trimestral (R$):</label>
+                <input type="text" id="faturamentoTrimestral" name="faturamentoTrimestral" oninput="formatCurrency(this)" placeholder="R$ 0,00">
+
+                <label for="outrasReceitas">Outras Receitas (R$):</label>
+                <input type="text" id="outrasReceitas" name="outrasReceitas" oninput="formatCurrency(this)" placeholder="R$ 0,00">
+
+                <label for="dividirQuota">Deseja dividir o pagamento em quotas?</label>
+                <select id="dividirQuota" name="dividirQuota">
+                    <option value="nao">Não</option>
+                    <option value="sim">Sim</option>
+                </select>
+            </div>
+        </div>
+
+        <button type="submit">Calcular</button>
+    </form>
+
+    <!-- Modal -->
+    <div id="resultModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <div id="result"></div>
+        </div>
+    </div>
+
+    <script>
+        const tipoCalculo = document.getElementById('tipoCalculo');
+        const atividade = document.getElementById('atividade');
+        const mensalInputs = document.getElementById('mensalInputs');
+        const trimestralInputs = document.getElementById('trimestralInputs');
+        const form = document.getElementById('taxForm');
+        const resultDiv = document.getElementById('result');
+        const modal = document.getElementById('resultModal');
+        const closeModal = document.querySelector('.close');
+
+        // Alternar entre inputs de mensal e trimestral
+        tipoCalculo.addEventListener('change', function() {
+            if (this.value === 'trimestral') {
+                mensalInputs.classList.add('hidden');
+                trimestralInputs.classList.remove('hidden');
+            } else {
+                mensalInputs.classList.remove('hidden');
+                trimestralInputs.classList.add('hidden');
+            }
+        });
+
+        // Formatar valor para moeda brasileira
+        function formatCurrency(input) {
+            let value = input.value.replace(/\D/g, '');
+            value = (value / 100).toFixed(2) + '';
+            value = value.replace('.', ',');
+            value = value.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+            input.value = 'R$ ' + value;
+        }
+
+        function parseCurrency(value) {
+            return parseFloat(value.replace('R$ ', '').replace('.', '').replace(',', '.')) || 0;
+        }
+
+        // Cálculo de impostos
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const tipo = tipoCalculo.value;
+            const atividadeSelecionada = atividade.value;
+            let presuncaoIRPJ, presuncaoCSLL;
+
+            // Definir presunção com base na atividade
+            if (atividadeSelecionada === 'comercio') {
+                presuncaoIRPJ = 0.08;
+                presuncaoCSLL = 0.12;
+            } else if (atividadeSelecionada === 'servicos') {
+                presuncaoIRPJ = 0.32;
+                presuncaoCSLL = 0.32;
+            } else if (atividadeSelecionada === 'industria') {
+                presuncaoIRPJ = 0.08;
+                presuncaoCSLL = 0.12;
+            }
+
+            let resultText = "";
+
+            if (tipo === 'mensal') {
+                const faturamento = parseCurrency(document.getElementById('faturamento').value);
+
+                // Cálculo de PIS e COFINS para Lucro Presumido - Mensal
+                const pis = faturamento * 0.0065;
+                const cofins = faturamento * 0.03;
+
+                resultText = `
+                    <p><strong>PIS A RECOLHER:</strong> R$ ${pis.toFixed(2).replace('.', ',')}</p>
+                    <p><strong>COFINS A RECOLHER:</strong> R$ ${cofins.toFixed(2).replace('.', ',')}</p>
+                `;
+            } else if (tipo === 'trimestral') {
+                const faturamentoTrimestral = parseCurrency(document.getElementById('faturamentoTrimestral').value);
+                const outrasReceitas = parseCurrency(document.getElementById('outrasReceitas').value);
+                const dividirQuota = document.getElementById('dividirQuota').value === 'sim';
+
+                // Cálculo de IRPJ e CSLL - Trimestral
+                const baseIRPJ = faturamentoTrimestral * presuncaoIRPJ;
+                const baseCSLL = faturamentoTrimestral * presuncaoCSLL;
+
+                const irpj = baseIRPJ * 0.15;
+                const csll = baseCSLL * 0.09;
+
+                let total = irpj + csll;
+
+                if (dividirQuota) {
+                    resultText += `<p><strong>IRPJ (Dividido em Quotas):</strong> R$ ${(irpj / 3).toFixed(2).replace('.', ',')}</p>`;
+                    resultText += `<p><strong>CSLL (Dividido em Quotas):</strong> R$ ${(csll / 3).toFixed(2).replace('.', ',')}</p>`;
+                } else {
+                    resultText += `<p><strong>IRPJ:</strong> R$ ${irpj.toFixed(2).replace('.', ',')}</p>`;
+                    resultText += `<p><strong>CSLL:</strong> R$ ${csll.toFixed(2).replace('.', ',')}</p>`;
+                }
+            }
+
+            resultDiv.innerHTML = resultText;
+            modal.style.display = 'block';
+        });
+
+        closeModal.addEventListener('click', function() {
+            modal.style.display = 'none';
+        });
+
+        window.onclick = function(event) {
+            if (event.target === modal) {
+                modal.style.display = 'none';
+            }
+        }
+    </script>
+
+</body>
+</html>
+

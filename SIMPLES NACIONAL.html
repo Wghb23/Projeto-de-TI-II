@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cálculo de Impostos - Simples Nacional</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            background-color: #f4f4f4;
+            color: #333;
+        }
+        h1 {
+            text-align: center;
+            color: #0044cc;
+            margin-top: 20px;
+        }
+        form {
+            max-width: 600px;
+            margin: auto;
+            padding: 20px;
+            border: 1px solid #0044cc;
+            border-radius: 8px;
+            background-color: #fff;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        label {
+            font-weight: bold;
+            margin-top: 10px;
+            display: block;
+            color: #0044cc;
+        }
+        input, select, button {
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #0044cc;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #0033a0;
+        }
+        .hidden {
+            display: none;
+        }
+        /* Estilos para o modal */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+        .modal-content {
+            background-color: #fff;
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid #0044cc;
+            width: 80%;
+            max-width: 600px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        .close {
+            color: #0044cc;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+        .close:hover,
+        .close:focus {
+            color: #0033a0;
+            text-decoration: none;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Cálculo de Impostos - Simples Nacional</h1>
+
+    <form id="taxForm">
+        <label for="rbt12">RBT12 (Receita Bruta dos últimos 12 meses) (R$):</label>
+        <input type="text" id="rbt12" name="rbt12" required oninput="formatCurrency(this)" placeholder="R$ 0,00">
+
+        <label for="faturamento">Faturamento Mensal (R$):</label>
+        <input type="text" id="faturamento" name="faturamento" required oninput="formatCurrency(this)" placeholder="R$ 0,00">
+
+        <button type="submit">Calcular</button>
+    </form>
+
+    <!-- Modal -->
+    <div id="resultModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <div id="result"></div>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('taxForm');
+        const resultDiv = document.getElementById('result');
+        const modal = document.getElementById('resultModal');
+        const closeModal = document.querySelector('.close');
+
+        const faixas = [
+            { faixa: 1, maxRBT12: 180000, aliquota: 0.04 },
+            { faixa: 2, maxRBT12: 360000, aliquota: 0.073 },
+            { faixa: 3, maxRBT12: 720000, aliquota: 0.095 },
+            { faixa: 4, maxRBT12: 1800000, aliquota: 0.107 },
+            { faixa: 5, maxRBT12: 3600000, aliquota: 0.112 },
+            { faixa: 6, maxRBT12: 4800000, aliquota: 0.143 }
+        ];
+
+        function formatCurrency(input) {
+            let value = input.value.replace(/\D/g, '');
+            value = (value / 100).toFixed(2) + '';
+            value = value.replace('.', ',');
+            value = value.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+            input.value = 'R$ ' + value;
+        }
+
+        function parseCurrency(value) {
+            return parseFloat(value.replace('R$ ', '').replace('.', '').replace(',', '.')) || 0;
+        }
+
+        function calcularAliquotaEfetiva(rbt12) {
+            for (let i = 0; i < faixas.length; i++) {
+                if (rbt12 <= faixas[i].maxRBT12) {
+                    return faixas[i].aliquota;
+                }
+            }
+            return 0;
+        }
+
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const rbt12 = parseCurrency(document.getElementById('rbt12').value);
+            const faturamento = parseCurrency(document.getElementById('faturamento').value);
+
+            // Calcula a alíquota efetiva com base no RBT12
+            const aliquotaEfetiva = calcularAliquotaEfetiva(rbt12);
+            const imposto = faturamento * aliquotaEfetiva;
+
+            let resultText = `<p><strong>Imposto a Recolher:</strong> R$ ${imposto.toFixed(2).replace('.', ',')}</p>`;
+            resultText += `<p><strong>Alíquota Efetiva:</strong> ${(aliquotaEfetiva * 100).toFixed(2)}%</p>`;
+
+            resultDiv.innerHTML = resultText;
+            modal.style.display = "block";
+        });
+
+        closeModal.addEventListener('click', function() {
+            modal.style.display = "none";
+        });
+
+        window.addEventListener('click', function(event) {
+            if (event.target === modal) {
+                modal.style.display = "none";
+            }
+        });
+    </script>
+    
+</body>
+</html>
